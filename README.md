@@ -1,76 +1,72 @@
-<div align="center">
-
 # pheromone_network
 
-**让记忆会增强，也会淡忘。**
+**Memory that strengthens with use and fades with disuse.**
 
-一个零依赖、可嵌入的本地关联记忆与召回内核：被反复使用的关系逐渐变强，长期闲置的关系自然衰减。
+A zero-dependency, embeddable local association and recall kernel: frequently used relationships grow stronger, while idle relationships naturally decay.
+
+[English](README.md) | [中文](README.zh-CN.md)
 
 `TypeScript` · `Node >= 18` · `0 runtime deps` · `offline-friendly`
 
-[中文文档](README.zh-CN.md) | [English documentation](README.en.md)
+## What problem does it solve?
 
-</div>
+Many systems need to answer the same question: **given a new input, which pieces of past information are worth using again?**
 
-## 它解决什么问题
+`pheromone_network` packages that loop into a small local component. You provide vectors; it learns local associations, scores candidates, and lets unused relationships fade over time. It does not require a remote model, a vector database, a training dataset, a network connection, or a GPU.
 
-很多系统都需要回答同一个问题：**面对一个新输入，哪些过去的信息最值得再次使用？**
+Use it as a standalone recall layer, or place it in front of search, caching, recommendation, rules, or agent memory.
 
-`pheromone_network` 把这个过程做成一个很小的本地组件。你提供向量，组件负责学习局部关联、给候选内容打分，并让长期不用的关联逐渐淡出。它不依赖远程模型、向量数据库或训练集，适合放在服务端、桌面端、边缘设备和各种 TypeScript 项目里。
+## Why use it?
 
-它可以作为独立的相似度召回层，也可以作为搜索、缓存、推荐、规则系统或智能体记忆的前置过滤器。
+- **Adapts through real usage**: repeated hits reinforce the relationships that matter in your product.
+- **Lets stale context fade**: evaporation and time based decay keep old relationships from dominating forever.
+- **Small and inspectable**: local connections, explicit weights, and cosine scores are easy to inspect.
+- **Simple deployment**: zero runtime dependencies, no network requirement, and no GPU requirement.
+- **Works with existing vectors**: use model embeddings, hashed features, or the built in `ngramEmbed` encoder.
 
-## 为什么有用
+## Where can it be used?
 
-- **越用越贴合业务**：重复命中的关联会被强化，排序会逐渐反映真实使用轨迹。
-- **不会无限堆积旧信息**：信息素支持蒸发和按时间衰减，过期关系会降低影响力。
-- **轻量且可解释**：局部连接、显式权重和余弦分数都能直接检查。
-- **部署边界小**：运行时零依赖，不要求联网，也不要求 GPU。
-- **可以从现有向量开始**：接入已有 embedding、哈希特征或 `ngramEmbed`，不改变上层数据结构。
-
-## 可以用在哪些场景
-
-| 场景 | 怎么使用 | 适合的结果 |
+| Scenario | How to use it | Typical outcome |
 | --- | --- | --- |
-| **语义缓存** | 将请求向量与历史请求关联；命中相似请求时复用结果，定期衰减旧关联 | 减少重复计算，适合本地 API、工具调用和内容生成缓存 |
-| **推荐与个性化** | 把用户行为或内容特征作为向量写入；点击、收藏、复用时再次强化 | 轻量的兴趣排序、常用功能排序和个性化入口 |
-| **文档、工单与知识条目去重** | 对新条目和历史条目评分，优先检查高分候选 | 找相似工单、合并重复 FAQ、提示已有解决方案 |
-| **日志与事件检索** | 用事件特征或文本 n-gram 建立局部关联；查询时召回相似历史事件 | 故障排查、运行手册匹配、异常上下文补全 |
-| **离线与边缘应用** | 在本地维护记忆，不上传原始数据；按设备或租户分别创建内核 | 桌面工具、浏览器扩展、IoT、内网服务和隐私敏感场景 |
-| **游戏与模拟系统** | 让 NPC、策略模块或模拟实体记录会反复触发的状态关系 | 行为偏好、场景记忆、策略选择和动态难度调整 |
-| **检索前过滤** | 先用本地内核从大量候选中筛一遍，再交给全文检索或远程模型 | 降低后续检索范围、网络调用次数和上下文长度 |
+| **Semantic caching** | Associate request vectors with previous requests; reinforce reused entries and decay old ones | Fewer repeated computations for local APIs, tools, and generated content |
+| **Recommendation and personalization** | Write behavior or content features; reinforce clicks, saves, and repeated actions | Lightweight interest ranking and personalized shortcuts |
+| **Document, ticket, and knowledge deduplication** | Score a new item against historical vectors before review | Similar tickets, duplicate FAQs, and existing solutions surface early |
+| **Log and event recall** | Encode event features or text n-grams and retrieve similar historical events | Faster incident investigation and runbook matching |
+| **Offline and edge applications** | Keep associations on the device or inside a tenant or project scope | Desktop tools, browser extensions, IoT, and privacy sensitive systems |
+| **Games and simulations** | Encode states, events, and behavior; reinforce paths that recur or work | NPC preferences, scene memory, strategy selection, and adaptive difficulty |
+| **Pre filtering for retrieval** | Narrow a large candidate set locally before full text search, a vector database, or a remote model | Fewer downstream calls, shorter contexts, and smaller search ranges |
 
-它尤其适合**候选已经有向量表示、需要持续在线更新、又希望旧关系自动降权**的系统。
+It is a strong fit when candidates already have vector representations, the system learns online, and stale relationships should lose influence automatically.
 
-## 现在的智能体可以用它做什么
+## What can today's agents use it for?
 
-在一个典型的 Agent 流程里，模型负责理解和生成，`pheromone_network` 负责从历史信息中找出“此刻最值得给模型看的内容”。它可以接在上下文窗口之前，作为一个会根据使用反馈变化的本地记忆层：
+In a typical agent workflow, the model handles understanding and generation while `pheromone_network` finds the historical information that is most useful right now. Place it before the context window as a local memory layer that changes with usage:
 
-- **长期记忆召回**：保存用户偏好、项目约定、历史决定和重要事实，在新对话中只注入相关内容。
-- **会话上下文筛选**：从很长的聊天记录、任务记录或观察结果中筛选少量高分片段，控制上下文长度和成本。
-- **工具结果复用**：记录搜索、数据库查询、代码分析或 API 调用的结果；遇到相似任务时优先找到过去可复用的结果。
-- **任务经验积累**：把“问题、采取的步骤、最终结果”编码后写入；相似任务出现时召回过去有效的处理路径。
-- **用户偏好维护**：强化用户反复确认或使用的表达方式、输出格式和操作习惯，让 Agent 的响应更贴合个人工作流。
-- **反思与失败记录**：把失败原因、修正方案和验证结果作为候选记忆保存，后续遇到相似错误时提醒模型避开旧路径。
-- **多 Agent 共享记忆**：为团队、项目或工作区维护独立内核，让不同 Agent 共享经过使用验证的事实和经验。
+- **Long-term memory recall**: store user preferences, project conventions, past decisions, and durable facts, then inject only relevant memories into a new conversation.
+- **Conversation context selection**: select a small set of high-scoring items from long chats, task traces, or observations to control context length and cost.
+- **Tool result reuse**: remember search results, database queries, code analysis, or API calls and surface reusable results for similar tasks.
+- **Task experience accumulation**: store the problem, actions taken, and outcome so similar tasks can recall a path that worked before.
+- **User preference maintenance**: reinforce confirmed formats, wording, and working habits so responses better match an individual's workflow.
+- **Reflection and failure memory**: keep failure causes, fixes, and validation results so later tasks can avoid a previously unsuccessful path.
+- **Shared memory for multiple agents**: maintain separate kernels for a team, project, or workspace so agents can share facts and experience that proved useful in practice.
 
-一个简单的接入顺序是：**用户输入和任务状态 -> 生成查询向量 -> 召回 Top-K 记忆 -> 放入模型上下文 -> 根据实际使用结果再次强化**。它不替代模型，也不负责生成答案，而是让模型每次都能更快拿到相关的历史信息。
+A simple integration loop is: **user input and task state -> query vector -> Top-K memory recall -> model context -> reinforce based on actual use**. It does not replace the model or generate answers; it helps the model reach relevant history faster.
 
-## 工作方式
+## How it works
 
 ```text
-输入向量 -> 局部关联学习 -> 召回打分 -> 使用反馈强化
-                                  ^
-                         长期不用则逐渐衰减
+vector -> local association learning -> recall score -> usage feedback
+                                               ^
+                                      idle links decay over time
 ```
 
 ```text
-写入：observe(vector)
-召回：score(queryVector, candidateVector)
-维护：evaporate(rate) / decayByFactor(factor)
+Write:    observe(vector)
+Recall:   score(queryVector, candidateVector)
+Maintain: evaporate(rate) / decayByFactor(factor)
 ```
 
-## 30 秒上手
+## 30-second start
 
 ```bash
 npm install
@@ -84,35 +80,35 @@ import { RecallKernel, ngramEmbed } from "pheromone_network";
 const dim = 4096;
 const memory = new RecallKernel(dim, { codeDim: 512, seed: 1 });
 const records = [
-  "客户偏好邮件沟通",
-  "发票抬头是 Acme 科技",
-  "结算周期是月结 30 天",
+  "prefers email",
+  "invoice name is Acme",
+  "billing cycle is net-30",
 ];
 const vectors = records.map((text) => ngramEmbed(text, dim));
 
-// 新信息进入系统时写入；重复使用同一类信息会强化对应关联
+// Write new information. Reused relationships become stronger.
 vectors.forEach((vector) => memory.observe(vector));
 
-// 查询时对候选记录排序
-const query = ngramEmbed("结算周期多久", dim);
+// Rank historical records for a new query.
+const query = ngramEmbed("how long is the billing cycle", dim);
 const ranked = records
   .map((text, index) => ({ text, score: memory.score(query, vectors[index]) }))
   .sort((left, right) => right.score - left.score);
 
 console.log(ranked[0]);
-// { text: "结算周期是月结 30 天", score: ... }
+// { text: "billing cycle is net-30", score: ... }
 
-// 定期维护：让长期不用的关系逐渐退出排序
+// Periodic maintenance keeps unused relationships from dominating.
 memory.decayByFactor(0.98);
 ```
 
-## 什么时候不适合
+## When is it not the right tool?
 
-它是一个**关联学习与候选召回组件**，不是全文搜索引擎、关系数据库、向量数据库或通用分类器。需要精确关键词过滤、复杂结构化查询、海量持久化索引或严格监督学习时，应与对应系统组合使用。
+This is an association learning and candidate recall component. It is not a full text search engine, relational database, vector database, or general purpose classifier. Pair it with those systems when you need exact keyword filters, complex structured queries, large durable indexes, or strictly supervised prediction.
 
-## 了解更多
+## Learn more
 
-- [中文完整文档](README.zh-CN.md)：API、接入方式、项目结构与实现来源
+- [中文完整文档](README.zh-CN.md)
 - [English documentation](README.en.md)
 
 ## License
