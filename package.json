@@ -1,0 +1,21 @@
+{
+  "name": "pheromone_network",
+  "version": "0.1.0",
+  "description": "Zero-dependency pheromone memory kernel: sparse local associative learning, dual-timescale pheromone and recall scoring. Drop into any agent.",
+  "main": "dist/src/index.js",
+  "types": "dist/src/index.d.ts",
+  "files": [
+    "dist/src"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "npm run build && node --test dist/test/pheromone.test.js dist/test/recall.test.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "typescript": "^5.5.0"
+  }
+}
