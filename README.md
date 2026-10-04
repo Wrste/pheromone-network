@@ -2,17 +2,61 @@
 
 # pheromone_network
 
-**A zero-dependency pheromone memory kernel for agents.**
+**让记忆会增强，也会淡忘。**
 
-`TypeScript` · `Node >= 18` · `0 runtime deps`
+一个零依赖、可嵌入的本地关联记忆与召回内核：被反复使用的关系逐渐变强，长期闲置的关系自然衰减。
 
-[中文](README.zh-CN.md) | [English](README.en.md)
+`TypeScript` · `Node >= 18` · `0 runtime deps` · `offline-friendly`
+
+[中文文档](README.zh-CN.md) | [English documentation](README.en.md)
 
 </div>
 
-`pheromone_network` provides long-term memory through pheromone traces and sparse local connections. Frequently used links strengthen; idle links fade naturally.
+## 它解决什么问题
 
-## Quick start
+很多系统都需要回答同一个问题：**面对一个新输入，哪些过去的信息最值得再次使用？**
+
+`pheromone_network` 把这个过程做成一个很小的本地组件。你提供向量，组件负责学习局部关联、给候选内容打分，并让长期不用的关联逐渐淡出。它不依赖远程模型、向量数据库或训练集，适合放在服务端、桌面端、边缘设备和各种 TypeScript 项目里。
+
+它可以作为独立的相似度召回层，也可以作为搜索、缓存、推荐、规则系统或智能体记忆的前置过滤器。
+
+## 为什么有用
+
+- **越用越贴合业务**：重复命中的关联会被强化，排序会逐渐反映真实使用轨迹。
+- **不会无限堆积旧信息**：信息素支持蒸发和按时间衰减，过期关系会降低影响力。
+- **轻量且可解释**：局部连接、显式权重和余弦分数都能直接检查。
+- **部署边界小**：运行时零依赖，不要求联网，也不要求 GPU。
+- **可以从现有向量开始**：接入已有 embedding、哈希特征或 `ngramEmbed`，不改变上层数据结构。
+
+## 可以用在哪些场景
+
+| 场景 | 怎么使用 | 适合的结果 |
+| --- | --- | --- |
+| **语义缓存** | 将请求向量与历史请求关联；命中相似请求时复用结果，定期衰减旧关联 | 减少重复计算，适合本地 API、工具调用和内容生成缓存 |
+| **推荐与个性化** | 把用户行为或内容特征作为向量写入；点击、收藏、复用时再次强化 | 轻量的兴趣排序、常用功能排序和个性化入口 |
+| **文档、工单与知识条目去重** | 对新条目和历史条目评分，优先检查高分候选 | 找相似工单、合并重复 FAQ、提示已有解决方案 |
+| **日志与事件检索** | 用事件特征或文本 n-gram 建立局部关联；查询时召回相似历史事件 | 故障排查、运行手册匹配、异常上下文补全 |
+| **离线与边缘应用** | 在本地维护记忆，不上传原始数据；按设备或租户分别创建内核 | 桌面工具、浏览器扩展、IoT、内网服务和隐私敏感场景 |
+| **游戏与模拟系统** | 让 NPC、策略模块或模拟实体记录会反复触发的状态关系 | 行为偏好、场景记忆、策略选择和动态难度调整 |
+| **检索前过滤** | 先用本地内核从大量候选中筛一遍，再交给全文检索或远程模型 | 降低后续检索范围、网络调用次数和上下文长度 |
+
+它尤其适合**候选已经有向量表示、需要持续在线更新、又希望旧关系自动降权**的系统。
+
+## 工作方式
+
+```text
+输入向量 -> 局部关联学习 -> 召回打分 -> 使用反馈强化
+                                  ^
+                         长期不用则逐渐衰减
+```
+
+```text
+写入：observe(vector)
+召回：score(queryVector, candidateVector)
+维护：evaporate(rate) / decayByFactor(factor)
+```
+
+## 30 秒上手
 
 ```bash
 npm install
@@ -24,22 +68,37 @@ npm test
 import { RecallKernel, ngramEmbed } from "pheromone_network";
 
 const dim = 4096;
-const kernel = new RecallKernel(dim, { codeDim: 512, seed: 1 });
-const memories = ["prefers email", "invoice name is Acme", "billing cycle is net-30"];
-const vectors = memories.map((text) => ngramEmbed(text, dim));
+const memory = new RecallKernel(dim, { codeDim: 512, seed: 1 });
+const records = [
+  "客户偏好邮件沟通",
+  "发票抬头是 Acme 科技",
+  "结算周期是月结 30 天",
+];
+const vectors = records.map((text) => ngramEmbed(text, dim));
 
-vectors.forEach((vector) => kernel.observe(vector));
-const query = ngramEmbed("how long is the billing cycle", dim);
-const ranked = memories
-  .map((text, i) => ({ text, score: kernel.score(query, vectors[i]) }))
-  .sort((a, b) => b.score - a.score);
+// 新信息进入系统时写入；重复使用同一类信息会强化对应关联
+vectors.forEach((vector) => memory.observe(vector));
+
+// 查询时对候选记录排序
+const query = ngramEmbed("结算周期多久", dim);
+const ranked = records
+  .map((text, index) => ({ text, score: memory.score(query, vectors[index]) }))
+  .sort((left, right) => right.score - left.score);
 
 console.log(ranked[0]);
+// { text: "结算周期是月结 30 天", score: ... }
+
+// 定期维护：让长期不用的关系逐渐退出排序
+memory.decayByFactor(0.98);
 ```
 
-## Documentation
+## 什么时候不适合
 
-- [中文文档](README.zh-CN.md)
+它是一个**关联学习与候选召回组件**，不是全文搜索引擎、关系数据库、向量数据库或通用分类器。需要精确关键词过滤、复杂结构化查询、海量持久化索引或严格监督学习时，应与对应系统组合使用。
+
+## 了解更多
+
+- [中文完整文档](README.zh-CN.md)：API、接入方式、项目结构与实现来源
 - [English documentation](README.en.md)
 
 ## License
