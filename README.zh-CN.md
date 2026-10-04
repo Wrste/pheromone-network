@@ -183,3 +183,7 @@ npm test
 
 - 论文：<https://arxiv.org/abs/2606.30669>
 - DOI：<https://doi.org/10.48550/arXiv.2606.30669>
+
+## 许可证
+
+本项目采用 [MIT License](LICENSE) 开源许可证。

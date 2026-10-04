@@ -128,4 +128,4 @@ Run `npm test` to reproduce these cases and see the scores in the test output. T
 
 ## License
 
-See the repository for license information.
+This project is released under the [MIT License](LICENSE).
