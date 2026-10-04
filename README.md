@@ -74,11 +74,67 @@ A simple integration loop is: **user input and task state -> query vector -> Top
 
 ## How it works
 
-```text
-vector -> local association learning -> recall score -> usage feedback
-                                               ^
-                                      idle links decay over time
+### 1. Application integration
+
+```mermaid
+flowchart LR
+  item[Memory text or features] --> embed[Embedding function]
+  embed --> vector[Memory vector]
+  vector --> store[(Application candidate store)]
+  vector --> observe[observe]
+  observe --> kernel[RecallKernel]
+  query[Query] --> query_embed[Same embedding function]
+  query_embed --> query_vector[Query vector]
+  query_vector --> score[score each candidate]
+  store --> score
+  kernel --> score
+  score --> rank[Application ranks results]
+  rank -. selected memory is reused .-> observe
 ```
+
+The application owns the candidate text, vectors, ranking, and reuse feedback. `RecallKernel` learns from `observe` and returns a score for each query/candidate pair; it does not store or search the candidate collection. Use the same embedding method and dimension for memories and queries.
+
+### 2. Write and recall paths
+
+```mermaid
+flowchart LR
+  memory[Memory vector] --> fold_write[Fold to codeDim]
+  fold_write -- target is the same vector --> train
+  train[Train self-association]
+  train --> network[Shared sparse network]
+  query[Query vector] --> fold_query[Fold to codeDim]
+  candidate[Candidate vector] --> fold_candidate[Fold to codeDim]
+  fold_query --> project_query[Network forward]
+  fold_candidate --> project_candidate[Network forward]
+  network --> project_query
+  network --> project_candidate
+  project_query --> cosine[Normalized cosine]
+  project_candidate --> cosine
+  cosine --> similarity[Similarity score]
+```
+
+`observe` updates the network. `score` projects both vectors through the current network and compares them without training.
+
+### 3. Sparse connection dynamics
+
+```mermaid
+flowchart LR
+  observation[observe vector] --> error[Prediction error and local co-activation]
+  error --> select[Select sparse connections within budget]
+  select --> accepted{Update accepted?}
+  accepted -- yes --> weights[Update selected weights]
+  accepted -- yes --> reinforce[Reinforce selected connections]
+  accepted -- yes --> evaporate[Local trail evaporation]
+  accepted -- no --> evaporate
+  reinforce --> trails[Short and long trails]
+  evaporate --> trails
+  weights --> gate[Pheromone gate affects forward pass]
+  trails --> gate[Pheromone gate affects forward pass]
+  decay[evaporate or decayByFactor] --> trails
+  trails -. optional .-> consolidate[Consolidation protects mature connections]
+```
+
+Local updates evaporate both trails and reinforce accepted connections. An explicit `evaporate(rate)` or `decayByFactor(factor)` call also reduces existing trails; elapsed time does not run automatically. Consolidation is optional and disabled by default. The browser demo adds its own frequency bonus and converts elapsed time and half-life to a decay factor; these are not built-in `RecallKernel.score` behaviors.
 
 ```text
 Write:    observe(vector)

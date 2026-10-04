@@ -105,11 +105,67 @@ npm 包地址：<https://www.npmjs.com/package/pheromone_network>
 
 ## 工作方式
 
-```text
-输入向量 -> 局部关联学习 -> 召回打分 -> 使用反馈强化
-                                  ^
-                         长期不用则逐渐衰减
+### 1. 应用如何接入
+
+```mermaid
+flowchart LR
+  item[记忆文本或特征] --> embed[向量编码函数]
+  embed --> vector[记忆向量]
+  vector --> store[(应用保存候选内容与向量)]
+  vector --> observe[observe 写入]
+  observe --> kernel[RecallKernel]
+  query[查询] --> query_embed[同一个向量编码函数]
+  query_embed --> query_vector[查询向量]
+  query_vector --> score[逐个候选 score 打分]
+  store --> score
+  kernel --> score
+  score --> rank[应用排序并取结果]
+  rank -. 实际复用后再次写入 .-> observe
 ```
+
+应用负责保存候选文本与向量、排序及使用反馈。`RecallKernel` 通过 `observe` 学习，并对每组查询与候选向量返回分数；它本身不保存或搜索候选集合。记忆与查询应使用相同的编码方式和维度。
+
+### 2. 写入与召回路径
+
+```mermaid
+flowchart LR
+  memory[记忆向量] --> fold_write[折叠到 codeDim]
+  fold_write -- 用自身作为目标 --> train
+  train[自联想训练]
+  train --> network[共享的稀疏网络]
+  query[查询向量] --> fold_query[折叠到 codeDim]
+  candidate[候选向量] --> fold_candidate[折叠到 codeDim]
+  fold_query --> project_query[网络前向投影]
+  fold_candidate --> project_candidate[网络前向投影]
+  network --> project_query
+  network --> project_candidate
+  project_query --> cosine[归一化余弦相似度]
+  project_candidate --> cosine
+  cosine --> similarity[相似度分数]
+```
+
+`observe` 会更新网络。`score` 只用当前网络分别投影两个向量并计算相似度，不执行训练。
+
+### 3. 稀疏连接如何变化
+
+```mermaid
+flowchart LR
+  observation[observe 向量] --> error[预测误差与局部共同激活]
+  error --> select[按预算选择稀疏连接]
+  select --> accepted{更新被接受?}
+  accepted -- 是 --> weights[更新选中的权重]
+  accepted -- 是 --> reinforce[强化选中的连接]
+  accepted -- 是 --> evaporate[局部信息素蒸发]
+  accepted -- 否 --> evaporate
+  reinforce --> trails[短期与长期信息素]
+  evaporate --> trails
+  weights --> gate[信息素门控影响前向计算]
+  trails --> gate[信息素门控影响前向计算]
+  decay[evaporate 或 decayByFactor] --> trails
+  trails -. 可选 .-> consolidate[固化保护成熟连接]
+```
+
+局部更新会让两种信息素衰减，并强化被接受的连接。显式调用 `evaporate(rate)` 或 `decayByFactor(factor)` 也会降低已有信息素；时间不会自动推进衰减。固化机制可选，默认关闭。浏览器 Demo 的频次加分以及根据经过时间和半衰期计算衰减因子都由 Demo 实现，不属于内核 `score` 的默认行为。
 
 最小接口只有三类：
 
