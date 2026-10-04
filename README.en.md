@@ -4,6 +4,8 @@
 
 A zero-dependency, embeddable local association and recall kernel: frequently used relationships grow stronger, while idle relationships naturally decay.
 
+[![npm version](https://img.shields.io/npm/v/pheromone_network.svg)](https://www.npmjs.com/package/pheromone_network) [![license](https://img.shields.io/npm/l/pheromone_network.svg)](LICENSE)
+
 [中文](README.zh-CN.md) | [English](README.en.md) | [Back to project home](README.md)
 
 `TypeScript` · `Node >= 18` · `0 runtime deps` · `offline-friendly`
@@ -15,6 +17,20 @@ Many systems need to answer the same question: **given a new input, which pieces
 `pheromone_network` packages that loop into a small local component. You provide vectors; it learns local associations, scores candidates, and lets unused relationships fade over time. It does not require a remote model, a vector database, a training dataset, a network connection, or a GPU.
 
 Use it as a standalone recall layer, or place it in front of search, caching, recommendation, rules, or agent memory.
+
+## Install from npm
+
+The package is publicly available on npm as version `0.1.0`. It includes compiled CommonJS output and TypeScript declarations, so applications can install and import it directly:
+
+```bash
+npm install pheromone_network
+```
+
+```ts
+import { RecallKernel, ngramEmbed } from "pheromone_network";
+```
+
+Package page: <https://www.npmjs.com/package/pheromone_network>
 
 ## Why use it?
 

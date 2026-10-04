@@ -4,6 +4,8 @@
 
 一个零依赖、可嵌入的本地关联记忆与召回内核：被反复使用的关系逐渐变强，长期闲置的关系自然衰减。
 
+[![npm version](https://img.shields.io/npm/v/pheromone_network.svg)](https://www.npmjs.com/package/pheromone_network) [![许可证](https://img.shields.io/npm/l/pheromone_network.svg)](LICENSE)
+
 [中文](README.zh-CN.md) | [English](README.en.md) | [返回项目首页](README.md)
 
 `TypeScript` · `Node >= 18` · `0 runtime deps` · `offline-friendly`
@@ -15,6 +17,20 @@
 `pheromone_network` 将这个过程封装为一个小型本地组件。你提供向量，组件负责学习局部关联、给候选内容打分，并让长期不用的关联逐渐淡出。它不依赖远程模型、向量数据库或训练集，可以用于服务端、桌面端、边缘设备和各种 TypeScript 项目。
 
 它可以作为独立的相似度召回层，也可以作为搜索、缓存、推荐、规则系统或智能体记忆的前置过滤器。
+
+## 从 npm 安装
+
+项目已经以 `0.1.0` 版本发布到公共 npm。包内包含编译后的 CommonJS 代码和 TypeScript 类型声明，应用可以直接安装和导入：
+
+```bash
+npm install pheromone_network
+```
+
+```ts
+import { RecallKernel, ngramEmbed } from "pheromone_network";
+```
+
+npm 包地址：<https://www.npmjs.com/package/pheromone_network>
 
 ## 核心能力
 
