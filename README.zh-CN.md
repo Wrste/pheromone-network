@@ -108,7 +108,7 @@ npm 包地址：<https://www.npmjs.com/package/pheromone_network>
 ### 1. 应用如何接入
 
 ```mermaid
-flowchart LR
+flowchart TD
   item[记忆文本或特征] --> embed[向量编码函数]
   embed --> vector[记忆向量]
   vector --> store[(应用保存候选内容与向量)]
@@ -128,7 +128,7 @@ flowchart LR
 ### 2. 写入与召回路径
 
 ```mermaid
-flowchart LR
+flowchart TD
   memory[记忆向量] --> fold_write[折叠到 codeDim]
   fold_write -- 用自身作为目标 --> train
   train[自联想训练]
@@ -149,7 +149,7 @@ flowchart LR
 ### 3. 稀疏连接如何变化
 
 ```mermaid
-flowchart LR
+flowchart TD
   observation[observe 向量] --> error[预测误差与局部共同激活]
   error --> select[按预算选择稀疏连接]
   select --> accepted{更新被接受?}

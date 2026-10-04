@@ -77,7 +77,7 @@ A simple integration loop is: **user input and task state -> query vector -> Top
 ### 1. Application integration
 
 ```mermaid
-flowchart LR
+flowchart TD
   item[Memory text or features] --> embed[Embedding function]
   embed --> vector[Memory vector]
   vector --> store[(Application candidate store)]
@@ -97,7 +97,7 @@ The application owns the candidate text, vectors, ranking, and reuse feedback. `
 ### 2. Write and recall paths
 
 ```mermaid
-flowchart LR
+flowchart TD
   memory[Memory vector] --> fold_write[Fold to codeDim]
   fold_write -- target is the same vector --> train
   train[Train self-association]
@@ -118,7 +118,7 @@ flowchart LR
 ### 3. Sparse connection dynamics
 
 ```mermaid
-flowchart LR
+flowchart TD
   observation[observe vector] --> error[Prediction error and local co-activation]
   error --> select[Select sparse connections within budget]
   select --> accepted{Update accepted?}
