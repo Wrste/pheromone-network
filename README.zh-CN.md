@@ -121,6 +121,135 @@ console.log(ranked[0]);
 // { text: "结算周期是月结 30 天", score: ... }
 ```
 
+## API 接口参考
+
+### `RecallKernel`
+
+需要在线记忆、候选排序或本地召回层时，优先使用这个高层 API。
+
+```ts
+new RecallKernel(dim: number, options?: RecallKernelOptions)
+```
+
+| 选项 | 默认值 | 说明 |
+| --- | --- | --- |
+| `codeDim` | `512` | 内部联想维度，不超过 `dim` |
+| `maxNeighbors` | `8` | 每个输出的最大局部连接数 |
+| `tagCount` | `32` | 拓扑标签数量 |
+| `tagDistance` | `1` | 允许连接的最大标签距离 |
+| `config` | 库默认配置 | 部分 `LocalLearningConfig` 覆盖项 |
+| `seed` | `1` | 确定性初始化；设为 `null` 使用随机初始化 |
+
+| 方法或属性 | 返回值 | 用途 |
+| --- | --- | --- |
+| `observe(vector)` | `TrainStepReport` | 通过自联想学习一条记忆向量 |
+| `score(query, candidate)` | `number` | 归一化相似度，越高越接近 |
+| `encode(vector)` | `number[]` | 将向量投影到已学习的联想空间 |
+| `evaporate(rate?)` | `number` | 按 `[0, 1]` 的比率衰减信息素，返回受影响连接数 |
+| `decayByFactor(factor)` | `number` | 将信息素乘以小于 `1` 的因子 |
+| `pheromoneMass()` | `number` | 统计有效连接的长期信息素总量 |
+| `trained` | `boolean` | 是否至少观察过一条向量 |
+| `trainSteps` | `number` | 观察次数 |
+| `loss` | `number \| null` | 最近一次观察的损失 |
+| `dim`、`codeDim`、`network` | 属性 | 输入维度、内部维度和底层网络 |
+
+### 在智能体中接入已有 embedding
+
+内核接受任意 `number[]`，因此可以直接复用项目已有的 embedding 服务，并将原文和向量一起保存：
+
+```ts
+import { RecallKernel, type Embedder } from "pheromone_network";
+
+const embed: Embedder = (text) => existingEmbeddingModel.embed(text);
+const memory = new RecallKernel(1536, { codeDim: 256 });
+const memories: Array<{ text: string; vector: number[] }> = [];
+
+function remember(text: string) {
+  const vector = embed(text);
+  memory.observe(vector);
+  memories.push({ text, vector });
+}
+
+function recall(query: string, limit = 3) {
+  const queryVector = embed(query);
+  return memories
+    .map((item) => ({ text: item.text, score: memory.score(queryVector, item.vector) }))
+    .sort((left, right) => right.score - left.score)
+    .slice(0, limit);
+}
+```
+
+将 `existingEmbeddingModel.embed` 替换为你的 embedding 函数即可。传给 `RecallKernel` 的 `dim` 必须与向量维度一致。
+
+### `LocalPheromoneNetwork`
+
+需要明确控制输入/输出维度、隐藏层、激活函数、标签、拓扑或监督式局部训练时，使用底层网络：
+
+```ts
+import { LocalPheromoneNetwork, type Matrix } from "pheromone_network";
+
+const network = new LocalPheromoneNetwork(4, [6], 2, {
+  activation: "tanh",
+  maxNeighbors: 3,
+  tagCount: 2,
+  tagDistance: 0,
+  seed: 7,
+});
+
+const input: Matrix = [[1, 0, 0.5, -1]];
+const target: Matrix = [[0.2, -0.4]];
+const prediction = network.forward(input);
+const report = network.localTrainStep(input, target);
+
+console.log(prediction, report.loss, report.mode, report.activeSynapses);
+```
+
+`input` 和 `target` 是按行组织的矩阵，行数必须一致；每行输入有 `inputSize` 个值，每行目标有 `outputSize` 个值。`forwardWithCache` 还会返回隐藏层激活值和激活前值。`localTrainStep` 返回包含 `loss`、`previousLoss`、`improved`、`mode`、`budgetPerOutput`、`activeSynapses` 和 `prediction` 的 `TrainStepReport`。传入 `outputMask` 可以对输出维度加权或禁用训练。
+
+网络选项包括 `maxNeighbors`、`tagCount`、`tagDistance`、`connectionRadius`、`activation`、`inputShape`、`hiddenShapes`、`outputShape`、`inputTags`、`outputTags`、`config` 和 `seed`。布局支持一维/二维；`inputTags` 和 `outputTags` 的长度必须与对应层大小一致，`hiddenShapes` 的长度必须与 `hiddenSizes` 一致。`config` 接受部分 `LocalLearningConfig`，并与 `DEFAULT_LOCAL_LEARNING_CONFIG` 合并。
+
+### `LocalPheromoneLayer`
+
+需要自定义拓扑或检查局部连接时，可以直接创建 `new LocalPheromoneLayer(inFeatures, outFeatures, options?)`。主要方法如下：
+
+| 方法 | 用途 |
+| --- | --- |
+| `forward(matrix)` | 计算层输出 |
+| `feedbackToInput(matrix)` | 将输出信号传回输入特征 |
+| `localUpdate(pre, post, localError, options)` | 执行手工局部 Hebbian 更新 |
+| `connectedInputs(outputIndex)` | 查看某个输出连接的输入索引 |
+| `effectivePheromone()` | 读取短期/长期信息素混合值 |
+| `pheromoneGate()` | 读取归一化信息素门控 |
+| `effectiveWeight()` | 读取经过信息素门控后的权重 |
+
+层选项支持 `maxNeighbors`、`connectionRadius`、`tagCount`、`tagDistance`、`inputShape`、`outputShape`、`inputTags`、`outputTags`、`usePheromoneGate`、`shortPheromoneWeight`、`longPheromoneWeight`、`bias` 和 `seed`。层对象公开的类型化数组是实时状态，只有在明确管理引擎状态时才应直接修改。
+
+可检查的层状态包括 `inFeatures`、`outFeatures`、`maxNeighbors`、`connectionRadius`、`tagCount`、`tagDistance`、`usePheromoneGate`、`neighborIndices`、`connectionMask`、`inputPositions`、`outputPositions`、`weight`、`bias`、`pheromone`、`shortPheromone`、`consolidation`、`lastUpdateMask`、`inputDegree` 和 `lastDirectionalDerivative`。
+
+### 向量工具与公共类型
+
+| 导出项 | 接口约定 |
+| --- | --- |
+| `ngramEmbed(text, dim?)` | 确定性的字符 2-5 gram 向量，L2 归一化；默认维度 `4096` |
+| `cosine(left, right)` | 等长归一化向量的点积；长度不同返回 `0` |
+| `normalizedCosine(left, right)` | 适用于任意模长向量的真正余弦相似度；长度不同时按双方共有的前缀计算 |
+| `Matrix` | `number[][]`，按行表示特征 |
+| `Embedder` | `(text: string) => number[]` |
+| `ActivationName` | `"tanh" \| "relu" \| "sigmoid" \| "identity"` |
+| `DEFAULT_CODE_DIM` | `512` |
+| `DEFAULT_RECALL_KERNEL_OPTIONS` | `RecallKernel` 的默认拓扑和随机种子 |
+| `DEFAULT_LOCAL_LEARNING_CONFIG` | 完整的默认训练和信息素配置 |
+
+`LocalLearningConfig` 控制学习率、自适应预算、蒸发、信号/权重裁剪、短期/长期信息素权重和固化，字段分为三组：
+
+- **学习与预算**：`learningRate`、`minBudgetPerOutput`、`maxBudgetPerOutput`、`initialBudgetPerOutput`、`shrinkFactor`、`growFactor`、`lossTolerance`。
+- **信息素与稳定性**：`evaporation`、`pheromoneReinforcement`、`synapseDecay`、`signalClip`、`weightClip`、`neighborFollowDistance`、`minPheromone`、`maxPheromone`。
+- **时间尺度与固化**：`shortPheromoneEvaporation`、`longPheromoneEvaporation`、`shortPheromoneReinforcement`、`longPheromoneReinforcement`、`shortPheromoneWeight`、`longPheromoneWeight`、`consolidationStrength`、`consolidationGrowth`、`consolidationDecay`、`consolidationThreshold`、`consolidationLrFloor`、`consolidationLossGate`。
+
+对于高级方法 `LocalPheromoneLayer.localUpdate`，`LocalUpdateOptions` 必须提供 `budgetPerOutput`、`mode`、`config` 和 `consolidate`。
+
+选项接口包括 `RecallKernelOptions`、`LocalPheromoneNetworkOptions`、`LocalPheromoneLayerOptions` 和 `LocalUpdateOptions`。网络对象还公开 `inputSize`、`hiddenSizes`、`outputSize`、`activation`、`maxNeighbors`、`config`、`layers`、`budgetPerOutput` 和 `previousLoss`，可用于检查和监控。
+
 ## 接入方式
 
 ### 使用已有向量
