@@ -69,6 +69,12 @@ Maintain: evaporate(rate) / decayByFactor(factor)
 ## 30-second start
 
 ```bash
+npm install pheromone_network
+```
+
+For local development:
+
+```bash
 npm install
 npm run build
 npm test

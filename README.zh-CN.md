@@ -301,6 +301,12 @@ console.log(prediction, report.loss, report.mode, report.activeSynapses);
 ## 构建与测试
 
 ```bash
+npm install pheromone_network
+```
+
+本地开发时运行：
+
+```bash
 npm install
 npm run build
 npm test

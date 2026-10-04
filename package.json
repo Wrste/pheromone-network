@@ -2,15 +2,43 @@
   "name": "pheromone_network",
   "version": "0.1.0",
   "license": "MIT",
+  "author": "Wrste",
   "description": "Zero-dependency pheromone memory kernel: sparse local associative learning, dual-timescale pheromone and recall scoring. Drop into any agent.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Wrste/pheromone-network.git"
+  },
+  "homepage": "https://github.com/Wrste/pheromone-network#readme",
+  "bugs": {
+    "url": "https://github.com/Wrste/pheromone-network/issues"
+  },
+  "keywords": [
+    "memory",
+    "recall",
+    "associative-memory",
+    "agent-memory",
+    "local-learning",
+    "typescript"
+  ],
   "main": "dist/src/index.js",
   "types": "dist/src/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "require": "./dist/src/index.js",
+      "default": "./dist/src/index.js"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "files": [
     "dist/src"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "test": "npm run build && node --test dist/test/pheromone.test.js dist/test/recall.test.js dist/test/scenarios.test.js"
+    "test": "npm run build && node --test dist/test/pheromone.test.js dist/test/recall.test.js dist/test/scenarios.test.js",
+    "prepublishOnly": "npm test"
   },
   "engines": {
     "node": ">=18"
