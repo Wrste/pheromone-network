@@ -34,7 +34,7 @@ Package page: <https://www.npmjs.com/package/pheromone_network>
 
 ## Browser demo
 
-Open [`examples/index.html`](examples/index.html) to try an interactive memory lab in the browser. It demonstrates memory observation, ranked recall, repeated reinforcement, and pheromone decay. See [`examples/README.md`](examples/README.md) for local serving and GitHub Pages instructions.
+Try the live demo directly in your browser: **[Open the online Memory Lab](https://wrste.github.io/pheromone-network/)**. It demonstrates memory observation, ranked recall, repeated reinforcement, frequency weighting, and time based pheromone decay. You can also open [`examples/index.html`](examples/index.html) locally. See [`examples/README.md`](examples/README.md) for local serving and GitHub Pages instructions.
 
 ## Why use it?
 
