@@ -106,6 +106,21 @@ memory.decayByFactor(0.98);
 
 This is an association learning and candidate recall component. It is not a full text search engine, relational database, vector database, or general purpose classifier. Pair it with those systems when you need exact keyword filters, complex structured queries, large durable indexes, or strictly supervised prediction.
 
+## Scenario test results
+
+The reproducible cases in [`test/scenarios.test.ts`](test/scenarios.test.ts) use three candidates per query. Each candidate is observed once with `RecallKernel(256, { codeDim: 128, seed: 17 })` and the built-in `ngramEmbed`. The expected candidate ranked first in all four retrieval cases:
+
+| Scenario | Expected top result | Top score | Next score | Result |
+| --- | --- | ---: | ---: | --- |
+| Tool cache | Matching `GET /api/orders/42` request | 0.9701 | 0.7412 | Pass |
+| Agent memory | Concise English summary preference | 0.9106 | 0.4990 | Pass |
+| Support tickets | Expired password-reset email link | 0.8025 | 0.5011 | Pass |
+| Incident logs | Payment gateway timeout 504 | 0.8433 | 0.5746 | Pass |
+
+The maintenance case also passed: `decayByFactor(0.5)` reduced pheromone mass from **984.6413** to **492.3206** after two observations. With the existing seven unit tests, `npm test` reports **12/12 passing**.
+
+Run `npm test` to reproduce these cases and see the scores in the test output. These are small, deterministic examples of near-text matching and decay, not a benchmark or a measured recall rate on real data. The built-in character n-gram encoder does not establish semantic equivalence between different phrasings; use an appropriate embedding model when that is required. Recommendation, edge deployment, and game scenarios described above have not been measured by this suite.
+
 ## Learn more
 
 - [中文完整文档](README.zh-CN.md)
