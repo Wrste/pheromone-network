@@ -32,6 +32,10 @@ import { RecallKernel, ngramEmbed } from "pheromone_network";
 
 npm 包地址：<https://www.npmjs.com/package/pheromone_network>
 
+## 浏览器 Demo
+
+打开 [`examples/index.html`](examples/index.html) 即可体验交互式记忆实验室：写入记忆、按查询召回、重复强化，以及信息素衰减。如何本地运行或部署到 GitHub Pages，请查看 [`examples/README.md`](examples/README.md)。
+
 ## 核心能力
 
 | 能力 | 说明 |

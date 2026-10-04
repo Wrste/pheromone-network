@@ -32,6 +32,10 @@ import { RecallKernel, ngramEmbed } from "pheromone_network";
 
 Package page: <https://www.npmjs.com/package/pheromone_network>
 
+## Browser demo
+
+Open [`examples/index.html`](examples/index.html) to try an interactive memory lab in the browser. It demonstrates memory observation, ranked recall, repeated reinforcement, and pheromone decay. See [`examples/README.md`](examples/README.md) for local serving and GitHub Pages instructions.
+
 ## Why use it?
 
 - **Adapts through real usage**: repeated hits reinforce the relationships that matter in your product.

@@ -1,0 +1,437 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Interactive browser demo for pheromone_network memory recall." />
+    <title>pheromone_network | Recall playground</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f5f6f8;
+        --surface: #ffffff;
+        --surface-muted: #fafbfc;
+        --line: #d9dee5;
+        --text: #20252b;
+        --muted: #69737d;
+        --accent: #1769d2;
+        --accent-soft: #eaf2fd;
+        --success: #16794f;
+        --warning: #8b5700;
+        --danger: #b42318;
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        min-width: 320px;
+        background: var(--bg);
+        color: var(--text);
+        font: 14px/1.5 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      button, input { font: inherit; }
+      button { cursor: pointer; }
+      button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+      .shell { width: min(1120px, calc(100% - 32px)); margin: 0 auto; padding: 28px 0 52px; }
+      .topbar { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding-bottom: 18px; border-bottom: 1px solid var(--line); margin-bottom: 28px; }
+      .brand { display: flex; align-items: center; gap: 13px; }
+      .mark { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 6px; background: var(--text); color: #fff; font-size: 12px; font-weight: 700; }
+      .eyebrow { margin: 0; color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; font-weight: 700; letter-spacing: 0; }
+      h1, h2, p { margin: 0; }
+      h1 { margin-top: 1px; font-size: 18px; font-weight: 650; letter-spacing: 0; }
+      .topbar a { color: var(--accent); text-decoration: none; }
+      .topbar a:hover { color: var(--text); }
+
+      .hero { display: grid; grid-template-columns: 1fr auto; align-items: end; gap: 24px; margin-bottom: 20px; }
+      .hero h2 { font-size: 22px; font-weight: 650; letter-spacing: 0; }
+      .hero p { max-width: 670px; margin-top: 6px; color: var(--muted); }
+      .status { display: flex; align-items: center; gap: 7px; padding: 6px 9px; border: 1px solid var(--line); border-radius: 5px; background: var(--surface); color: var(--muted); font-size: 12px; white-space: nowrap; }
+      .status::before { width: 7px; height: 7px; border-radius: 50%; background: var(--success); content: ""; }
+      .status[data-state="loading"]::before { background: var(--warning); }
+      .status[data-state="error"]::before { background: var(--danger); }
+
+      .metrics { display: grid; grid-template-columns: repeat(4, 1fr); margin-bottom: 16px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); }
+      .metric { min-height: 64px; padding: 11px 15px; border-right: 1px solid var(--line); }
+      .metric:last-child { border-right: 0; }
+      .metric-label { color: var(--muted); font-size: 12px; }
+      .metric-value { margin-top: 1px; color: var(--text); font-size: 18px; font-weight: 650; }
+
+      .workspace { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+      .panel { overflow: hidden; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); }
+      .panel-head { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 14px 16px; border-bottom: 1px solid var(--line); background: var(--surface-muted); }
+      .panel-head h2 { font-size: 15px; font-weight: 650; }
+      .panel-head p { margin-top: 2px; color: var(--muted); font-size: 12px; }
+      .panel-body { padding: 16px; }
+
+      .memory-list { display: grid; min-height: 264px; align-content: start; margin-top: 12px; }
+      .memory-item { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center; padding: 11px 0; border-bottom: 1px solid var(--line); }
+      .memory-item:first-child { padding-top: 0; }
+      .memory-item strong { display: block; font-size: 14px; font-weight: 600; }
+      .memory-item small { display: block; margin-top: 3px; color: var(--muted); }
+      .memory-item button { min-width: 28px; min-height: 28px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); color: var(--muted); font-size: 17px; line-height: 1; }
+      .memory-item button:hover { border-color: var(--accent); color: var(--accent); }
+      .empty { padding: 38px 16px; border: 1px dashed var(--line); color: var(--muted); text-align: center; }
+
+      .form-row { display: flex; gap: 9px; }
+      .input { width: 100%; min-width: 0; padding: 9px 11px; border: 1px solid #bfc7d1; border-radius: 4px; background: var(--surface); color: var(--text); }
+      .input::placeholder { color: #7b8792; }
+      .button { padding: 9px 13px; border: 1px solid var(--accent); border-radius: 4px; background: var(--accent); color: #fff; font-weight: 650; }
+      .button:hover { background: #0f5ab9; }
+      .button.secondary { border-color: var(--line); background: var(--surface); color: var(--text); font-weight: 600; }
+      .button.secondary:hover { border-color: var(--accent); color: var(--accent); }
+      .button:disabled { cursor: not-allowed; opacity: .5; }
+
+      .query-box { margin-bottom: 14px; }
+      .results { display: grid; gap: 10px; }
+      .result { padding: 10px 0; border-bottom: 1px solid var(--line); }
+      .result-top { display: flex; justify-content: space-between; gap: 12px; font-size: 14px; }
+      .score { color: var(--accent); font-variant-numeric: tabular-nums; font-weight: 700; }
+      .bar { height: 4px; margin-top: 8px; overflow: hidden; border-radius: 2px; background: #e4e8ed; }
+      .bar span { display: block; height: 100%; border-radius: inherit; background: var(--accent); }
+      .hint { color: var(--muted); font-size: 13px; }
+
+      .controls { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: end; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
+      .control-label { display: block; margin-bottom: 6px; color: var(--muted); font-size: 12px; }
+      .time-fields { display: flex; align-items: center; gap: 7px; }
+      .time-fields .input { width: 92px; }
+      .time-fields span { color: var(--muted); font-size: 12px; }
+      .time-factor { display: block; margin-top: 6px; color: var(--muted); font-size: 12px; }
+      .time-factor strong { color: var(--warning); font-variant-numeric: tabular-nums; }
+
+      .notice { margin-top: 14px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface-muted); color: var(--muted); font-size: 12px; }
+      .notice.error { border-color: #e0aaa5; background: #fff6f5; color: var(--danger); }
+      .guidance { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px; margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--line); }
+      .guidance h2 { margin-bottom: 6px; font-size: 15px; font-weight: 650; }
+      .guidance p { max-width: 520px; color: var(--muted); }
+      .guidance ul { margin: 10px 0 0; padding-left: 18px; color: var(--muted); }
+      .guidance li + li { margin-top: 5px; }
+      .guidance code { padding: 1px 4px; border: 1px solid var(--line); border-radius: 3px; background: var(--surface); color: var(--text); font-size: .92em; }
+      .footer { margin-top: 22px; color: var(--muted); font-size: 12px; text-align: center; }
+      .footer a { color: var(--accent); }
+
+      @media (max-width: 820px) {
+        .hero, .workspace { grid-template-columns: 1fr; }
+        .status { justify-self: start; }
+        .guidance { grid-template-columns: 1fr; gap: 18px; }
+      }
+      @media (max-width: 560px) {
+        .shell { width: min(100% - 22px, 1120px); padding-top: 20px; }
+        .metrics { grid-template-columns: repeat(2, 1fr); }
+        .metric:nth-child(2) { border-right: 0; }
+        .metric:nth-child(-n + 2) { border-bottom: 1px solid var(--line); }
+        .panel-head, .panel-body { padding-left: 15px; padding-right: 15px; }
+        .form-row, .controls { grid-template-columns: 1fr; flex-direction: column; }
+        .form-row .button, .controls .button { width: 100%; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <div class="brand">
+          <div class="mark" aria-hidden="true">⌁</div>
+          <div>
+            <p class="eyebrow">pheromone_network</p>
+            <h1>Memory Lab</h1>
+          </div>
+        </div>
+        <a href="https://github.com/Wrste/pheromone-network" target="_blank" rel="noreferrer">View on GitHub ↗</a>
+      </header>
+
+      <section class="hero" aria-labelledby="intro-title">
+        <div>
+          <h2 id="intro-title">A local memory that learns from reuse.</h2>
+          <p>Write short memories, ask a query, and watch the kernel rank related context. Repeated observations reinforce the local network; decay lets stale links fade.</p>
+        </div>
+        <div class="status" id="status" data-state="loading">Loading npm package…</div>
+      </section>
+
+      <section class="metrics" aria-label="Kernel metrics">
+        <div class="metric"><div class="metric-label">Observations</div><div class="metric-value" id="observations">—</div></div>
+        <div class="metric"><div class="metric-label">Pheromone mass</div><div class="metric-value" id="mass">—</div></div>
+        <div class="metric"><div class="metric-label">Memory items</div><div class="metric-value" id="item-count">—</div></div>
+        <div class="metric"><div class="metric-label">Embedding</div><div class="metric-value">n-gram</div></div>
+      </section>
+
+      <section class="workspace">
+        <article class="panel">
+          <div class="panel-head">
+            <div><h2>Memory stream</h2><p>Each item is observed by the kernel.</p></div>
+            <button class="button secondary" id="reset" type="button" disabled>Reset</button>
+          </div>
+          <div class="panel-body">
+            <form class="form-row" id="memory-form">
+              <input class="input" id="memory-input" autocomplete="off" placeholder="e.g. prefers concise release notes" aria-label="New memory" />
+              <button class="button" type="submit" disabled>Observe</button>
+            </form>
+            <div class="memory-list" id="memory-list" aria-live="polite"></div>
+          </div>
+        </article>
+
+        <article class="panel">
+          <div class="panel-head">
+            <div><h2>Recall</h2><p>Rank by similarity and reuse frequency.</p></div>
+          </div>
+          <div class="panel-body">
+            <form class="form-row query-box" id="query-form">
+              <input class="input" id="query-input" autocomplete="off" value="What format should the release notes use?" aria-label="Recall query" />
+              <button class="button" type="submit" disabled>Recall</button>
+            </form>
+            <div class="results" id="results" aria-live="polite"></div>
+            <div class="controls">
+              <div>
+                <label class="control-label" for="elapsed-hours">Time decay</label>
+                <div class="time-fields">
+                  <input class="input" id="elapsed-hours" type="number" min="0" step="1" value="24" aria-label="Elapsed time in hours" />
+                  <span>hours elapsed</span>
+                  <input class="input" id="half-life-hours" type="number" min="0.1" step="1" value="24" aria-label="Half-life in hours" />
+                  <span>hour half-life</span>
+                </div>
+                <span class="time-factor">Factor: <strong id="decay-value">0.50×</strong></span>
+              </div>
+              <button class="button secondary" id="decay-button" type="button" disabled>Apply time decay</button>
+            </div>
+            <div class="notice" id="notice">The demo runs in your browser. No memory is sent to a server.</div>
+          </div>
+        </article>
+      </section>
+
+      <section class="guidance" aria-labelledby="encoder-notes-title">
+        <div>
+          <h2 id="encoder-notes-title">About the built-in N-gram encoder</h2>
+          <p>This demo uses a deterministic character N-gram encoder so it can run offline without a model download or API key.</p>
+          <ul>
+            <li>Good for short text, near-duplicates, log templates, and quick prototypes.</li>
+            <li>It compares character fragments, not meaning. Shared phrases can look more similar than they should.</li>
+            <li>It can miss paraphrases that use different words, especially in long or multilingual text.</li>
+          </ul>
+        </div>
+      </section>
+
+      <p class="footer">Powered by <a href="https://www.npmjs.com/package/pheromone_network" target="_blank" rel="noreferrer">pheromone_network 0.1.0</a> · MIT licensed</p>
+    </main>
+
+    <script type="module">
+      const packageUrl = "https://esm.sh/pheromone_network@0.1.0?bundle&target=es2022";
+      const initialMemories = [
+        "Prefers concise release notes",
+        "Uses TypeScript for backend services",
+        "Deploys offline tools on edge devices",
+        "Reuses successful API responses as cache entries",
+        "Keeps incident runbooks close to matching logs",
+      ];
+
+      const $ = (id) => document.getElementById(id);
+      const status = $("status");
+      const notice = $("notice");
+      const controls = [
+        $("memory-form").querySelector("button"),
+        $("query-form").querySelector("button"),
+        $("reset"),
+        $("decay-button"),
+      ];
+      let RecallKernel;
+      // The published encoder uses Node's synchronous crypto API. This small
+      // browser encoder keeps the static demo dependency free while feeding
+      // the same vector shape into RecallKernel.
+      function browserNgramEmbed(text, dim = 4096) {
+        const normalized = String(text).toLowerCase().trim().split(/\s+/).filter(Boolean).join(" ");
+        const vector = new Array(dim).fill(0);
+        const padded = `^${normalized}$`;
+        for (const width of [2, 3, 4, 5]) {
+          for (let i = 0; i + width <= padded.length; i += 1) {
+            let hash = 2166136261;
+            for (let j = i; j < i + width; j += 1) {
+              hash ^= padded.charCodeAt(j);
+              hash = Math.imul(hash, 16777619);
+            }
+            vector[(hash >>> 0) % dim] += 1;
+          }
+        }
+        const norm = Math.sqrt(vector.reduce((sum, value) => sum + value * value, 0));
+        return vector.map((value) => value / Math.max(norm, 1));
+      }
+
+      let ngramEmbed = browserNgramEmbed;
+      let kernel;
+      let memories = [];
+
+      function setControlsEnabled(enabled) {
+        controls.forEach((control) => {
+          control.disabled = !enabled;
+        });
+      }
+
+      function setStatus(text, state = "ready") {
+        status.textContent = text;
+        status.dataset.state = state;
+      }
+
+      function formatNumber(value) {
+        return Number.isFinite(value) ? value.toFixed(2) : "0.00";
+      }
+
+      function frequencyBoost(observations) {
+        return Math.min(0.35, 0.08 * Math.log2(Math.max(1, observations)));
+      }
+
+      function renderMetrics() {
+        $("observations").textContent = kernel ? String(kernel.trainSteps) : "—";
+        $("mass").textContent = kernel ? formatNumber(kernel.pheromoneMass()) : "—";
+        $("item-count").textContent = String(memories.length);
+      }
+
+      function renderMemories() {
+        const list = $("memory-list");
+        list.replaceChildren();
+        if (!memories.length) {
+          const empty = document.createElement("div");
+          empty.className = "empty";
+          empty.textContent = "No memories yet. Add one above to start learning.";
+          list.append(empty);
+          return;
+        }
+        memories.forEach((memory, index) => {
+          const item = document.createElement("div");
+          item.className = "memory-item";
+          const copy = document.createElement("div");
+          const title = document.createElement("strong");
+          title.textContent = memory.text;
+          const meta = document.createElement("small");
+          meta.textContent = `Observed ${memory.observations} time${memory.observations === 1 ? "" : "s"}`;
+          copy.append(title, meta);
+          const reinforce = document.createElement("button");
+          reinforce.type = "button";
+          reinforce.title = "Observe this memory again";
+          reinforce.setAttribute("aria-label", `Observe again: ${memory.text}`);
+          reinforce.textContent = "+";
+          reinforce.addEventListener("click", () => observeMemory(index));
+          item.append(copy, reinforce);
+          list.append(item);
+        });
+      }
+
+      function renderResults(query = "") {
+        const results = $("results");
+        results.replaceChildren();
+        if (!kernel || !memories.length) {
+          const hint = document.createElement("p");
+          hint.className = "hint";
+          hint.textContent = "Add a memory to see ranked results.";
+          results.append(hint);
+          return;
+        }
+        const queryVector = ngramEmbed(query, 256);
+        const ranked = memories
+          .map((memory) => {
+            const similarity = kernel.score(queryVector, memory.vector);
+            const score = Math.min(1, similarity + frequencyBoost(memory.observations));
+            return { ...memory, similarity, score };
+          })
+          .sort((left, right) => right.score - left.score);
+        ranked.forEach((memory) => {
+          const result = document.createElement("div");
+          result.className = "result";
+          const top = document.createElement("div");
+          top.className = "result-top";
+          const label = document.createElement("span");
+          label.textContent = memory.text;
+          const score = document.createElement("span");
+          score.className = "score";
+          score.textContent = formatNumber(memory.score);
+          top.append(label, score);
+          const bar = document.createElement("div");
+          bar.className = "bar";
+          const fill = document.createElement("span");
+          fill.style.width = `${Math.max(0, Math.min(100, memory.score * 100))}%`;
+          bar.append(fill);
+          result.append(top, bar);
+          results.append(result);
+        });
+      }
+
+      function observeMemory(index) {
+        const memory = memories[index];
+        kernel.observe(memory.vector);
+        memory.observations += 1;
+        renderMemories();
+        renderMetrics();
+        renderResults($("query-input").value);
+        notice.textContent = `Reinforced “${memory.text}”. The next recall uses the updated local network.`;
+        notice.className = "notice";
+      }
+
+      function addMemory(text) {
+        const value = text.trim();
+        if (!value) return;
+        const vector = ngramEmbed(value, 256);
+        kernel.observe(vector);
+        memories.push({ text: value, vector, observations: 1 });
+        renderMemories();
+        renderMetrics();
+        renderResults($("query-input").value);
+      }
+
+      function createKernel() {
+        kernel = new RecallKernel(256, { codeDim: 128, seed: 17 });
+        memories = [];
+        initialMemories.forEach(addMemory);
+        notice.textContent = "The demo runs in your browser. No memory is sent to a server.";
+        notice.className = "notice";
+        renderResults($("query-input").value);
+      }
+
+      $("memory-form").addEventListener("submit", (event) => {
+        event.preventDefault();
+        addMemory($("memory-input").value);
+        $("memory-input").value = "";
+        $("memory-input").focus();
+      });
+
+      $("query-form").addEventListener("submit", (event) => {
+        event.preventDefault();
+        renderResults($("query-input").value);
+      });
+
+      $("reset").addEventListener("click", createKernel);
+      function timeDecayFactor() {
+        const elapsedHours = Math.max(0, Number($("elapsed-hours").value) || 0);
+        const halfLifeHours = Math.max(0.1, Number($("half-life-hours").value) || 0.1);
+        return Math.pow(0.5, elapsedHours / halfLifeHours);
+      }
+
+      function renderDecayFactor() {
+        $("decay-value").textContent = `${timeDecayFactor().toFixed(2)}×`;
+      }
+
+      $("elapsed-hours").addEventListener("input", renderDecayFactor);
+      $("half-life-hours").addEventListener("input", renderDecayFactor);
+      $("decay-button").addEventListener("click", () => {
+        const elapsedHours = Math.max(0, Number($("elapsed-hours").value) || 0);
+        const halfLifeHours = Math.max(0.1, Number($("half-life-hours").value) || 0.1);
+        const factor = timeDecayFactor();
+        const affected = kernel.decayByFactor(factor);
+        renderMetrics();
+        renderResults($("query-input").value);
+        notice.textContent = `Applied ${elapsedHours}h time decay with a ${halfLifeHours}h half-life (${factor.toFixed(2)}×) to ${affected} active connections.`;
+        notice.className = "notice";
+      });
+
+      try {
+        ({ RecallKernel } = await import(packageUrl));
+        createKernel();
+        setControlsEnabled(true);
+        setStatus("Package loaded", "ready");
+      } catch (error) {
+        console.error(error);
+        setStatus("Package failed to load", "error");
+        notice.textContent = "The npm package could not be loaded. Serve this folder over HTTP and check your network connection, then refresh.";
+        notice.className = "notice error";
+        setControlsEnabled(false);
+      }
+    </script>
+  </body>
+</html>
