@@ -38,6 +38,20 @@ Use it as a standalone recall layer, or place it in front of search, caching, re
 
 It is a strong fit when candidates already have vector representations, the system learns online, and stale relationships should lose influence automatically.
 
+## What can today's agents use it for?
+
+In a typical agent workflow, the model handles understanding and generation while `pheromone_network` finds the historical information that is most useful right now. Place it before the context window as a local memory layer that changes with usage:
+
+- **Long-term memory recall**: store user preferences, project conventions, past decisions, and durable facts, then inject only relevant memories into a new conversation.
+- **Conversation context selection**: select a small set of high-scoring items from long chats, task traces, or observations to control context length and cost.
+- **Tool result reuse**: remember search results, database queries, code analysis, or API calls and surface reusable results for similar tasks.
+- **Task experience accumulation**: store the problem, actions taken, and outcome so similar tasks can recall a path that worked before.
+- **User preference maintenance**: reinforce confirmed formats, wording, and working habits so responses better match an individual's workflow.
+- **Reflection and failure memory**: keep failure causes, fixes, and validation results so later tasks can avoid a previously unsuccessful path.
+- **Shared memory for multiple agents**: maintain separate kernels for a team, project, or workspace so agents can share facts and experience that proved useful in practice.
+
+A simple integration loop is: **user input and task state -> query vector -> Top-K memory recall -> model context -> reinforce based on actual use**. It does not replace the model or generate answers; it helps the model reach relevant history faster.
+
 ## How it works
 
 ```text
