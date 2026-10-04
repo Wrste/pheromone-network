@@ -120,24 +120,24 @@ flowchart TD
 ```mermaid
 flowchart TD
   subgraph build[Topology at construction]
-    tags[Input and output tags and positions] --> candidates[Tag-compatible candidates]
-    candidates --> neighbors[Nearest inputs, up to maxNeighbors per output]
-    neighbors --> mask[Connection indices and mask]
+    tags[Unit tags and positions] --> candidates[Compatible inputs]
+    candidates --> neighbors[Nearest neighbors]
+    neighbors --> mask[Indices and mask]
   end
   subgraph forward[Each forward pass]
-    short[Short-term trail] --> blend[Weighted trail mixture]
-    long[Long-term trail] --> blend
-    blend --> gate[Normalize gate per output]
-    mask --> effective[Mask * weight * gate]
+    short[Short trail] --> blend[Trail mixture]
+    long[Long trail] --> blend
+    blend --> gate[Normalized gate]
+    mask --> effective[Effective weight]
     weight[Learned weight] --> effective
     gate --> effective
-    input[Connected input values] --> sum[Weighted sum plus bias]
+    input[Input values] --> sum[Sum plus bias]
     effective --> sum
-    sum --> output[Output code units]
+    sum --> output[Output code]
   end
 ```
 
-Each output reads at most `maxNeighbors` tag-compatible inputs. The mask fixes which connections exist; their weights and pheromone traces change through learning. By default, `RecallKernel` folds the input to `codeDim` and uses one `codeDim -> codeDim` local layer with no hidden layer. The lower-level `LocalPheromoneNetwork` can add hidden layers. Both trails are maintained, but the default forward gate uses the long-term trail only (`shortPheromoneWeight = 0`, `longPheromoneWeight = 1`).
+At construction, unit tags and positions select candidates; each output connects to at most `maxNeighbors` nearby inputs. On each forward pass, the effective weight is the connection mask multiplied by the learned weight and pheromone gate. Connected inputs are summed with those weights and a bias. Learning changes weights and trails, but not the mask. By default, `RecallKernel` folds the input to `codeDim` and uses one `codeDim -> codeDim` local layer with no hidden layer. The lower-level `LocalPheromoneNetwork` can add hidden layers. Both trails are maintained, but the default forward gate uses the long-term trail only (`shortPheromoneWeight = 0`, `longPheromoneWeight = 1`).
 
 ### 4. Sparse connection dynamics
 
