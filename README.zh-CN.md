@@ -146,7 +146,31 @@ flowchart TD
 
 `observe` 会更新网络。`score` 只用当前网络分别投影两个向量并计算相似度，不执行训练。
 
-### 3. 稀疏连接如何变化
+### 3. 模型内部结构
+
+```mermaid
+flowchart TD
+  subgraph build[构建时确定连接拓扑]
+    tags[输入和输出单元的标签与位置] --> candidates[筛选标签兼容的候选输入]
+    candidates --> neighbors[每个输出选最近的至多 maxNeighbors 个输入]
+    neighbors --> mask[连接索引与掩码]
+  end
+  subgraph forward[每次前向计算]
+    short[短期信息素] --> blend[按权重混合信息素]
+    long[长期信息素] --> blend
+    blend --> gate[按输出单元归一化门控]
+    mask --> effective[掩码 * 权重 * 门控]
+    weight[学习得到的权重] --> effective
+    gate --> effective
+    input[已连接的输入值] --> sum[加权求和并加偏置]
+    effective --> sum
+    sum --> output[输出编码单元]
+  end
+```
+
+每个输出单元最多读取 `maxNeighbors` 个标签兼容的输入。连接掩码确定哪些边存在，学习过程会改变这些边的权重和信息素。默认 `RecallKernel` 先将输入折叠到 `codeDim`，再使用一个没有隐藏层的 `codeDim -> codeDim` 局部层；底层 `LocalPheromoneNetwork` 可添加隐藏层。短期、长期信息素都会维护，但默认前向门控只使用长期信息素（`shortPheromoneWeight = 0`，`longPheromoneWeight = 1`）。
+
+### 4. 稀疏连接如何变化
 
 ```mermaid
 flowchart TD

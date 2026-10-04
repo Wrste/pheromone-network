@@ -115,7 +115,31 @@ flowchart TD
 
 `observe` updates the network. `score` projects both vectors through the current network and compares them without training.
 
-### 3. Sparse connection dynamics
+### 3. Inside the model
+
+```mermaid
+flowchart TD
+  subgraph build[Topology at construction]
+    tags[Input and output tags and positions] --> candidates[Tag-compatible candidates]
+    candidates --> neighbors[Nearest inputs, up to maxNeighbors per output]
+    neighbors --> mask[Connection indices and mask]
+  end
+  subgraph forward[Each forward pass]
+    short[Short-term trail] --> blend[Weighted trail mixture]
+    long[Long-term trail] --> blend
+    blend --> gate[Normalize gate per output]
+    mask --> effective[Mask * weight * gate]
+    weight[Learned weight] --> effective
+    gate --> effective
+    input[Connected input values] --> sum[Weighted sum plus bias]
+    effective --> sum
+    sum --> output[Output code units]
+  end
+```
+
+Each output reads at most `maxNeighbors` tag-compatible inputs. The mask fixes which connections exist; their weights and pheromone traces change through learning. By default, `RecallKernel` folds the input to `codeDim` and uses one `codeDim -> codeDim` local layer with no hidden layer. The lower-level `LocalPheromoneNetwork` can add hidden layers. Both trails are maintained, but the default forward gate uses the long-term trail only (`shortPheromoneWeight = 0`, `longPheromoneWeight = 1`).
+
+### 4. Sparse connection dynamics
 
 ```mermaid
 flowchart TD
